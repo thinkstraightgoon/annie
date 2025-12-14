@@ -43,6 +43,7 @@ const SunburstChart: React.FC<SunburstChartProps> = ({ data }) => {
     const partitionLayout = d3.partition<HierarchyNode>()
       .size([2 * Math.PI, root.height + 1]);
     
+    // Cast here is crucial for TS build to pass
     const rootNode = partitionLayout(root) as d3.HierarchyRectangularNode<HierarchyNode>;
 
     const rootValue = rootNode.value || 1;
