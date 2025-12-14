@@ -33,18 +33,22 @@ const SunburstChart: React.FC<SunburstChartProps> = ({ data }) => {
     const hierarchyData = transformDataToHierarchy(data);
 
     // Create Hierarchy
-    const root = d3.hierarchy(hierarchyData)
+    const root = d3.hierarchy<HierarchyNode>(hierarchyData)
       .sum(d => d.value || 0)
       .sort((a, b) => (b.value || 0) - (a.value || 0));
 
     // Create Partition
-    d3.partition<HierarchyNode>()
-      .size([2 * Math.PI, root.height + 1])
-      (root);
+    // IMPORTANT FIX: Explicitly cast the result of partition() to HierarchyRectangularNode
+    // This tells TypeScript that the nodes now have x0, y0, x1, y1 properties
+    const partitionLayout = d3.partition<HierarchyNode>()
+      .size([2 * Math.PI, root.height + 1]);
+    
+    const rootNode = partitionLayout(root) as d3.HierarchyRectangularNode<HierarchyNode>;
 
-    const rootValue = root.value || 1;
+    const rootValue = rootNode.value || 1;
 
     // Define Arc
+    // We type the arc generator to expect HierarchyRectangularNode
     const arc = d3.arc<d3.HierarchyRectangularNode<HierarchyNode>>()
       .startAngle(d => d.x0)
       .endAngle(d => d.x1)
@@ -92,13 +96,14 @@ const SunburstChart: React.FC<SunburstChartProps> = ({ data }) => {
     };
 
     // Draw Arcs
+    // IMPORTANT FIX: Use rootNode (which is typed as Rectangular) instead of root
     const path = g.append("g")
       .selectAll("path")
-      .data(root.descendants().slice(1))
+      .data(rootNode.descendants().slice(1))
       .join("path")
       .attr("fill", d => getSegmentColor(d))
       .attr("fill-opacity", d => 1)
-      .attr("d", arc as any)
+      .attr("d", d => arc(d)) // Explicit arrow function helps TS inference
       .style("cursor", "pointer")
       .on("mouseenter", (event, d) => {
         const percentage = ((d.value || 0) / rootValue) * 100;
@@ -142,9 +147,10 @@ const SunburstChart: React.FC<SunburstChartProps> = ({ data }) => {
       .attr("text-anchor", "middle")
       .style("user-select", "none")
       .selectAll("text")
-      .data(root.descendants().slice(1))
+      .data(rootNode.descendants().slice(1)) // Use rootNode here too
       .join("text")
       .attr("transform", function(d) {
+        // d is now correctly typed as HierarchyRectangularNode, so x0/x1/y0/y1 exist
         const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
         const y = (d.y0 + d.y1) / 2 * radius;
         return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
@@ -154,7 +160,8 @@ const SunburstChart: React.FC<SunburstChartProps> = ({ data }) => {
       .style("font-weight", d => d.depth === 1 ? "bold" : "normal")
       .style("fill", d => {
           const bgColor = getSegmentColor(d);
-          const c = d3.color(bgColor);
+          // IMPORTANT FIX: Explicitly convert to RGB to safely access r, g, b properties
+          const c = d3.color(bgColor)?.rgb();
           if(c) {
               const yiq = ((c.r * 299) + (c.g * 587) + (c.b * 114)) / 1000;
               return yiq >= 128 ? 'black' : 'white';
