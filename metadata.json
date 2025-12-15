@@ -1,5 +1,5 @@
 {
-  "name": "Copy of Portfolio Sunburst Analyzer",
-  "description": "A professional investment visualizer using a multi-layer Sunburst chart (D3.js) coupled with an editable data grid. Features Gemini 2.5 AI for portfolio analysis.",
+  "name": "Portfolio Sunburst Analyzer",
+  "description": "A professional investment visualizer using a multi-layer Sunburst chart (D3.js) coupled with an editable data grid.",
   "requestFramePermissions": []
 }
